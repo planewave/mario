@@ -29,6 +29,7 @@ def main(argv):
     parser.add_argument('--gain', '-g', type=int, default=10)
     parser.add_argument('--iteration', '-i', type=int, default=1)
     parser.add_argument('--duration', '-t', type=int, choices=[211, 460, 633], default=211)
+    parser.add_argument('--no_header', '-n', action='store_true')
 
     args = parser.parse_args()
 
@@ -71,6 +72,8 @@ def main(argv):
             usrp_capture([freq, str(duration), str(gain)], str(file_path), total_len-68)
             # if run as root, uncomment the following
             # os.system('chmod 666 {}'.format(str(file_path))) 
+            if args.no_header:
+                continue
 
             header = CaptureHeader(version=3, total_len=total_len, sensor_id=int('FFFF', 16),
                             fc_khz=freq/1000, fs_khz=56e3, bw_khz=44.8e3, gain_db=gain,
