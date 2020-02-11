@@ -7,6 +7,7 @@ import os
 import sys
 import struct
 import numpy as np
+import matplotlib.pyplot as plt
 from pathlib import Path
 from datetime import datetime
 import argparse
@@ -30,6 +31,7 @@ def main(argv):
     parser.add_argument('--iteration', '-i', type=int, default=1)
     parser.add_argument('--duration', '-t', type=int, choices=[211, 460, 633], default=211)
     parser.add_argument('--no_header', '-n', action='store_true')
+    parser.add_argument('--visualize', '-v', action='store_true')
 
     args = parser.parse_args()
 
@@ -71,7 +73,9 @@ def main(argv):
             file_path = folder / (device_name + date_time + '.dat')
             usrp_capture([freq, str(duration), str(gain)], str(file_path), total_len-68)
             # if run as root, uncomment the following
-            # os.system('chmod 666 {}'.format(str(file_path))) 
+            # os.system('chmod 666 {}'.format(str(file_path)))
+            if args.visualize:
+                visualize_data(file_path, 56e6, freq)
             if args.no_header:
                 continue
 
@@ -83,6 +87,29 @@ def main(argv):
 
             capture = CaptureFile(header=header, path=file_path)
             capture.save()
+
+def visualize_data(file_path, fs, fc):
+    with open(file_path, 'rb') as f:
+        raw = np.fromfile(f, dtype=np.int16)
+    data = raw[0::2] + 1j*raw[1::2]
+    # power = 20 * np.log10(np.sqrt(np.mean((data * np.conj(data)).real)))
+    # print('signal power is {p:3.2f} dB'.format(p=power))
+    _, ax = plt.subplots(2, 1, figsize=(10,7))
+    ax[0].specgram(data, NFFT=8192, Fs=fs/1e6, Fc=fc/1e6, noverlap=1024)
+    ax[0].set_xlabel('time (ms)')
+    ax[0].set_ylabel('frequency (MHz)')
+    ax[0].set_xticklabels(ax[0].get_xticks() / 1000)
+    down_sample = 1000
+    data = data[0:-1:down_sample]
+    ax[1].plot(np.arange(len(data)) / fs * down_sample * 1000, 
+        20 * np.log10(np.abs(data)))
+    ax[1].set_xlim(left=0, right=len(data) / fs * down_sample * 1000)
+    ax[1].set_ylim(bottom=20, top=100)
+    ax[1].axhline(y=93.3, linestyle='--', color='r')
+    ax[1].set_xlabel('time (ms)')
+    ax[1].set_ylabel('power (dB)')
+    plt.savefig(file_path.with_suffix('.png'))
+    # plt.show()
 
 def usrp_capture(command_input, file_path, total_len):
 
