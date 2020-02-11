@@ -20,18 +20,21 @@ def main(argv):
     parser = argparse.ArgumentParser(
         description='Collect data using USRP. Use `sudo python3` to run')
     parser.add_argument('--folder', '-fd', type=str, default='usrp_capture',
-        help='the folder name (under HOME) that save the data')
+        help='optional, the folder name (under HOME) that save the data')
     parser.add_argument('--device', '-d', type=str, default='my_device',
-        help='the device name')
+        help='optional, the device name')
     parser.add_argument('--frequency', '-f', type=float, nargs="+", default=None, 
         help='carrier frequency in Hz')
     parser.add_argument('--band', '-b', choices=['2.4', '5.8', 'all'], default=None,
-        help='frequency band, choose from 2.4, 5.8 or all')
-    parser.add_argument('--gain', '-g', type=int, default=10)
-    parser.add_argument('--iteration', '-i', type=int, default=1)
-    parser.add_argument('--duration', '-t', type=int, choices=[211, 460, 633], default=211)
-    parser.add_argument('--no_header', '-n', action='store_true')
-    parser.add_argument('--visualize', '-v', action='store_true')
+        help='frequency band, choose from 2.4, 5.8 or all, \
+            choose `frequency` or `band` to set up the fc of USRP')
+    parser.add_argument('--gain', '-g', type=int, default=10, help='optional, USRP Rx gain')
+    parser.add_argument('--iteration', '-i', type=int, default=1, 
+        help='optional, number of captures for each fc')
+    parser.add_argument('--duration', '-t', type=int, choices=[211, 460, 633], default=211, 
+        help='optional, capture length in milisecond')
+    parser.add_argument('--no_header', '-n', action='store_true', help='save raw data without header')
+    parser.add_argument('--visualize', '-v', action='store_true', help='save visualization with data')
 
     args = parser.parse_args()
 
