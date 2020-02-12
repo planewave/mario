@@ -41,6 +41,7 @@ def main(argv):
     device_name  = args.device
     folder = (Path.home()/args.folder)
     folder.mkdir(exist_ok=True)
+    os.system('chmod 666 {}'.format(str(folder)))
     if args.band is None and args.frequency is None:
         print('No frequency is provided, use default 2422.3e6 Hz')
         fc_list = [2422.3e6]
@@ -76,7 +77,7 @@ def main(argv):
             file_path = folder / (device_name + date_time + '.dat')
             usrp_capture([freq, str(duration), str(gain)], str(file_path), total_len-68)
             # if run as root, uncomment the following
-            # os.system('chmod 666 {}'.format(str(file_path)))
+            os.system('chmod 666 {}'.format(str(file_path)))
             if args.visualize:
                 visualize_data(file_path, 56e6, freq)
             if args.no_header:
@@ -180,17 +181,6 @@ class CaptureHeader:
         if self.header_version in (3, 4):
             self.capture_mode = np.uint32(capture_mode)
             self.drone_search_bitmap = np.uint64(drone_search_bitmap)
-
-    def get(self):
-        '''
-        Utility function to get the header information as a dict.
-
-        Arguments:
-            None
-        Returns:
-            [dict]: Dictionary containing header values.
-        '''
-        return vars(self)
 
 
 class CaptureFile:
