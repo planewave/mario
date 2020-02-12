@@ -40,8 +40,9 @@ def main(argv):
 
     device_name  = args.device
     folder = (Path.home()/args.folder)
-    folder.mkdir(exist_ok=True)
-    os.system('chmod 666 {}'.format(str(folder)))
+    if not folder.exists():
+        os.system('mkdir -m777 {}'.format(str(folder)))
+    
     if args.band is None and args.frequency is None:
         print('No frequency is provided, use default 2422.3e6 Hz')
         fc_list = [2422.3e6]
@@ -79,7 +80,7 @@ def main(argv):
             # if run as root, uncomment the following
             os.system('chmod 666 {}'.format(str(file_path)))
             if args.visualize:
-                visualize_data(file_path, 56e6, freq)
+                visualize_data(file_path, 56e6, freq, duration)
             if args.no_header:
                 continue
 
@@ -92,8 +93,8 @@ def main(argv):
             capture = CaptureFile(header=header, path=file_path)
             capture.save()
 
-def visualize_data(file_path, fs, fc):
-    with open(file_path, 'rb') as f:
+def visualize_data(file_path, fs, fc, duration):
+    with file_path.open() as f:
         raw = np.fromfile(f, dtype=np.int16)
     data = raw[0::2] + 1j*raw[1::2]
     # power = 20 * np.log10(np.sqrt(np.mean((data * np.conj(data)).real)))
@@ -101,18 +102,22 @@ def visualize_data(file_path, fs, fc):
     _, ax = plt.subplots(2, 1, figsize=(10,7))
     ax[0].specgram(data, NFFT=8192, Fs=fs/1e6, Fc=fc/1e6, noverlap=1024)
     ax[0].set_xlabel('time (ms)')
+    ax[0].set_xlim(left=0, right=duration * 1e6)
     ax[0].set_ylabel('frequency (MHz)')
     ax[0].set_xticklabels(ax[0].get_xticks() / 1000)
     down_sample = 1000
     data = data[0:-1:down_sample]
     ax[1].plot(np.arange(len(data)) / fs * down_sample * 1000, 
         20 * np.log10(np.abs(data)))
-    ax[1].set_xlim(left=0, right=len(data) / fs * down_sample * 1000)
+    ax[1].set_xlim(left=0, right=duration * 1000)
     ax[1].set_ylim(bottom=20, top=100)
     ax[1].axhline(y=93.3, linestyle='--', color='r')
     ax[1].set_xlabel('time (ms)')
     ax[1].set_ylabel('power (dB)')
-    plt.savefig(file_path.with_suffix('.png'))
+
+    fig_path = str(file_path.with_suffix('.png'))
+    plt.savefig(fig_path)
+    os.system('chmod 666 {}'.format(fig_path)) # in case run as sudo
     # plt.show()
 
 def usrp_capture(command_input, file_path, total_len):
@@ -120,7 +125,6 @@ def usrp_capture(command_input, file_path, total_len):
     command = '/usr/local/lib/uhd/examples/rx_samples_to_file' \
         ' --freq {} --rate 56e6 --duration {} --gain {} --file {}' \
         .format(*command_input, file_path)
-
     over_flow = True
     retry = 0
     while over_flow:
