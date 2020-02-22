@@ -18,11 +18,13 @@ def main(argv):
         raise Exception('UHD cannot be found')
 
     parser = argparse.ArgumentParser(
-        description='Collect data using USRP. Use `sudo python3` to run')
+        description='Collect data using USRP. Use `python3` (may need root privileges) to run')
     parser.add_argument('--folder', '-fd', type=str, default='usrp_capture',
         help='optional, the folder name (under HOME) that save the data')
     parser.add_argument('--device', '-d', type=str, default='my_device',
         help='optional, the device name')
+    parser.add_argument('--rate', '-r', type=float, default=56e6,
+        help='Sampling rate in Hz')
     parser.add_argument('--frequency', '-f', type=float, nargs="+", default=None, 
         help='carrier frequency in Hz')
     parser.add_argument('--band', '-b', choices=['2.4', '5.8', 'all'], default=None,
@@ -42,7 +44,13 @@ def main(argv):
     folder = (Path.home()/args.folder)
     if not folder.exists():
         os.system('mkdir -m777 {}'.format(str(folder)))
-    
+
+    if args.rate > 56e6 or args.rate < 5e6:
+        raise Exception('ERROR: sampling rate should be between 5e6 to 56e6')
+    if args.rate != 56e6 and args.no_header == False:
+        print('with customized sampling rate, header will not be attached')
+        args.no_header = True
+
     if args.band is None and args.frequency is None:
         print('No frequency is provided, use default 2422.3e6 Hz')
         fc_list = [2422.3e6]
@@ -76,7 +84,7 @@ def main(argv):
         for _ in range(iteration):
             date_time = datetime.now().strftime('_%Y_%m_%d_%H_%M_%S')
             file_path = folder / (device_name + date_time + '.dat')
-            usrp_capture([freq, str(duration), str(gain)], str(file_path), total_len-68)
+            usrp_capture([freq, str(args.rate), str(duration), str(gain)], str(file_path), total_len-68)
             # if run as root, uncomment the following
             os.system('chmod 666 {}'.format(str(file_path)))
             if args.visualize:
@@ -97,8 +105,8 @@ def visualize_data(file_path, fs, fc, duration):
     with file_path.open() as f:
         raw = np.fromfile(f, dtype=np.int16)
     data = raw[0::2] + 1j*raw[1::2]
-    # power = 20 * np.log10(np.sqrt(np.mean((data * np.conj(data)).real)))
-    # print('signal power is {p:3.2f} dB'.format(p=power))
+    power = 20 * np.log10(np.sqrt(np.mean((data * np.conj(data)).real)))
+    print('digital power is {p:3.2f} dB'.format(p=power))
     _, ax = plt.subplots(2, 1, figsize=(10,7))
     ax[0].specgram(data, NFFT=8192, Fs=fs/1e6, Fc=fc/1e6, noverlap=1024)
     ax[0].set_xlabel('time (ms)')
@@ -114,7 +122,7 @@ def visualize_data(file_path, fs, fc, duration):
     ax[1].axhline(y=93.3, linestyle='--', color='r')
     ax[1].set_xlabel('time (ms)')
     ax[1].set_ylabel('power (dB)')
-
+    ax[1].set_title('digital power is {p:3.2f} dB'.format(p=power))
     fig_path = str(file_path.with_suffix('.png'))
     plt.savefig(fig_path)
     os.system('chmod 666 {}'.format(fig_path)) # in case run as sudo
@@ -123,7 +131,7 @@ def visualize_data(file_path, fs, fc, duration):
 def usrp_capture(command_input, file_path, total_len):
 
     command = '/usr/local/lib/uhd/examples/rx_samples_to_file' \
-        ' --freq {} --rate 56e6 --duration {} --gain {} --file {}' \
+        ' --freq {} --rate {} --duration {} --gain {} --file {}' \
         .format(*command_input, file_path)
     over_flow = True
     retry = 0
