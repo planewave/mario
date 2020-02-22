@@ -75,6 +75,8 @@ def main(argv):
         total_len = 103040068
     elif args.duration == 633:
         total_len = 141792068
+    if args.no_header:
+        total_len = 0 # no need if no header
     duration = args.duration / 1000    
 
     iteration = args.iteration # repeat times for each fc
@@ -88,7 +90,7 @@ def main(argv):
             # if run as root, uncomment the following
             os.system('chmod 666 {}'.format(str(file_path)))
             if args.visualize:
-                visualize_data(file_path, 56e6, freq, duration)
+                visualize_data(file_path, args.rate, freq, duration)
             if args.no_header:
                 continue
 
@@ -106,7 +108,7 @@ def visualize_data(file_path, fs, fc, duration):
         raw = np.fromfile(f, dtype=np.int16)
     data = raw[0::2] + 1j*raw[1::2]
     power = 20 * np.log10(np.sqrt(np.mean((data * np.conj(data)).real)))
-    print('digital power is {p:3.2f} dB'.format(p=power))
+    # print('digital power is {p:3.2f} dB'.format(p=power))
     _, ax = plt.subplots(2, 1, figsize=(10,7))
     ax[0].specgram(data, NFFT=8192, Fs=fs/1e6, Fc=fc/1e6, noverlap=1024)
     ax[0].set_xlabel('time (ms)')
@@ -122,7 +124,7 @@ def visualize_data(file_path, fs, fc, duration):
     ax[1].axhline(y=93.3, linestyle='--', color='r')
     ax[1].set_xlabel('time (ms)')
     ax[1].set_ylabel('power (dB)')
-    ax[1].set_title('digital power is {p:3.2f} dB'.format(p=power))
+    ax[0].set_title('digital power is {p:3.2f} dB'.format(p=power))
     fig_path = str(file_path.with_suffix('.png'))
     plt.savefig(fig_path)
     os.system('chmod 666 {}'.format(fig_path)) # in case run as sudo
