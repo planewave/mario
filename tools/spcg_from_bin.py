@@ -16,7 +16,8 @@ def main():
     with open(args.file_path, 'rb') as f:
         raw = np.fromfile(f, dtype=np.int16)
     data = raw[0::2] + 1j*raw[1::2]
-
+    power = 20 * np.log10(np.sqrt(np.mean((data * np.conj(data)).real)))
+    print('signal power is {p:3.2f} dB'.format(p=power))
     _, ax = plt.subplots(2, 1, figsize=(10,6))
     ax[0].specgram(data, NFFT=4096, Fs=args.rate / 1e6, Fc=args.fc / 1e6, noverlap=2048)
     ax[0].set_xlabel('time (ms)')
