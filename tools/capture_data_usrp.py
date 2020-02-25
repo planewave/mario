@@ -1,10 +1,12 @@
 """
 This is a stand alone script that captures and saves data using USRP.
 The save format is designed to be compatible with the engineD
+
+to install matplotlib:
+sudo apt-get install python3-matplotlib
 """
 
 import os
-import sys
 import struct
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,7 +15,7 @@ from datetime import datetime
 import argparse
 
 
-def main(argv):
+def main():
     if not Path('/usr/local/lib/uhd/examples').is_dir():
         raise Exception('UHD cannot be found')
 
@@ -90,7 +92,7 @@ def main(argv):
             # if run as root, uncomment the following
             os.system('chmod 666 {}'.format(str(file_path)))
             if args.visualize:
-                visualize_data(file_path, args.rate, freq, duration)
+                visualize_data(file_path, args.rate, freq, duration, gain)
             if args.no_header:
                 continue
 
@@ -103,7 +105,7 @@ def main(argv):
             capture = CaptureFile(header=header, path=file_path)
             capture.save()
 
-def visualize_data(file_path, fs, fc, duration):
+def visualize_data(file_path, fs, fc, duration, gain):
     with file_path.open() as f:
         raw = np.fromfile(f, dtype=np.int16)
     data = raw[0::2] + 1j*raw[1::2]
@@ -115,7 +117,7 @@ def visualize_data(file_path, fs, fc, duration):
     ax[0].set_xlim(left=0, right=duration * 1e6)
     ax[0].set_ylabel('frequency (MHz)')
     ax[0].set_xticklabels(ax[0].get_xticks() / 1000)
-    down_sample = 1000
+    down_sample = 50
     data = data[0:-1:down_sample]
     ax[1].plot(np.arange(len(data)) / fs * down_sample * 1000, 
         20 * np.log10(np.abs(data)))
@@ -124,7 +126,8 @@ def visualize_data(file_path, fs, fc, duration):
     ax[1].axhline(y=93.3, linestyle='--', color='r')
     ax[1].set_xlabel('time (ms)')
     ax[1].set_ylabel('power (dB)')
-    ax[0].set_title('digital power is {p:3.2f} dB'.format(p=power))
+    ax[0].set_title('fc: {fc} MHz, fs: {fs} MHz, gain: {g} dB, power: {p:3.2f} dB' \
+        .format(fc=fc/1e6, fs=fs/1e6, g=gain, p=power))
     fig_path = str(file_path.with_suffix('.png'))
     plt.savefig(fig_path)
     os.system('chmod 666 {}'.format(fig_path)) # in case run as sudo
@@ -233,4 +236,4 @@ class CaptureFile:
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main()
