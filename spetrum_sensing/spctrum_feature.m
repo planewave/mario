@@ -1,6 +1,6 @@
 close all; clear; clc
 addpath ../tools/
-filename = '/home/xiao/usrp_capture/my_device_2020_02_25_11_56_36.dat';
+filename = '../data/my_device_2020_02_25_11_56_36.dat';
 [header, data] = load_signal(filename);
 stft_win = 1024;
 stft_overlap = 512;
