@@ -47,8 +47,8 @@ def main():
     if not folder.exists():
         os.system('mkdir -m777 {}'.format(str(folder)))
 
-    if args.rate > 56e6 or args.rate < 5e6:
-        raise Exception('ERROR: sampling rate should be between 5e6 to 56e6')
+    if args.rate > 56e6 or args.rate < 1e6:
+        raise Exception('ERROR: sampling rate should be between 1e6 to 56e6')
     if args.rate != 56e6 and args.no_header == False:
         print('with customized sampling rate, header will not be attached')
         args.no_header = True
