@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 
+
 def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--rate', type=float, default=56e6, help='sampling rate in Hz')
@@ -26,6 +27,6 @@ def main():
     ax[1].psd(data, NFFT=4096, Fs=args.rate, Fc=args.fc, noverlap=2048)
     plt.show()
 
+
 if __name__ == "__main__":
     main()
-    
