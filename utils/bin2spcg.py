@@ -1,5 +1,5 @@
 """
-plot the spectrogram of a binary file collected by USRP 
+plot the spectrogram of a binary file collected by USRP
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,8 +8,10 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--rate', type=float, default=56e6, help='sampling rate in Hz')
-    parser.add_argument('--fc', type=float, default=0, help='centre frequency in Hz')
+    parser.add_argument('--rate', type=float, default=56e6,
+                        help='sampling rate in Hz')
+    parser.add_argument('--fc', type=float, default=0,
+                        help='centre frequency in Hz')
     parser.add_argument('file_path', type=str, help='path of the binary file')
     args = parser.parse_args()
 
@@ -19,7 +21,7 @@ def main():
     data = raw[0::2] + 1j*raw[1::2]
     power = 20 * np.log10(np.sqrt(np.mean((data * np.conj(data)).real)))
     print('signal power is {p:3.2f} dB'.format(p=power))
-    _, ax = plt.subplots(2, 1, figsize=(10,6))
+    _, ax = plt.subplots(2, 1, figsize=(9, 6))
     ax[0].specgram(data, NFFT=512, Fs=args.rate / 1e6, Fc=args.fc / 1e6)
     ax[0].set_xlabel('time (ms)')
     ax[0].set_ylabel('frequency (MHz)')
