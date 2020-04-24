@@ -20,36 +20,49 @@ def main():
         raise Exception('UHD cannot be found')
 
     parser = argparse.ArgumentParser(
-        description='Collect data using USRP. Use `python3` (may need root privileges) to run')
-    parser.add_argument('--folder', '-fd', type=str, default='usrp_capture',
+        description='Collect data using USRP. \
+        Use `python3` (may need root privileges) to run')
+    parser.add_argument(
+        '--folder', '-fd', type=str, default='usrp_capture',
         help='optional, the folder name (under HOME) that save the data')
-    parser.add_argument('--device', '-d', type=str, default='my_device',
+    parser.add_argument(
+        '--device', '-d', type=str, default='my_device',
         help='optional, the device name')
-    parser.add_argument('--rate', '-r', type=float, default=56e6,
+    parser.add_argument(
+        '--rate', '-r', type=float, default=56e6,
         help='Sampling rate in Hz')
-    parser.add_argument('--frequency', '-f', type=float, nargs="+", default=None, 
+    parser.add_argument(
+        '--frequency', '-f', type=float, nargs="+", default=None,
         help='carrier frequency in Hz')
-    parser.add_argument('--band', '-b', choices=['2.4', '5.8', 'all'], default=None,
+    parser.add_argument(
+        '--band', '-b', choices=['2.4', '5.8', 'all'], default=None,
         help='frequency band, choose from 2.4, 5.8 or all, \
-            choose `frequency` or `band` to set up the fc of USRP')
-    parser.add_argument('--gain', '-g', type=int, default=10, help='optional, USRP Rx gain')
-    parser.add_argument('--iteration', '-i', type=int, default=1, 
+        choose `frequency` or `band` to set up the fc of USRP')
+    parser.add_argument(
+        '--gain', '-g', type=int, default=10, help='optional, USRP Rx gain')
+    parser.add_argument(
+        '--iteration', '-i', type=int, default=1,
         help='optional, number of captures for each fc')
-    parser.add_argument('--duration', '-t', type=int, choices=[211, 460, 633], default=211, 
+    parser.add_argument(
+        '--duration', '-t', type=int, choices=[211, 460, 633], default=211,
         help='optional, capture length in milisecond')
-    parser.add_argument('--no_header', '-n', action='store_true', help='save raw data without header')
-    parser.add_argument('--visualize', '-v', action='store_true', help='save visualization with data')
+    parser.add_argument(
+        '--no_header', '-n', action='store_true',
+        help='save raw data without header')
+    parser.add_argument(
+        '--visualize', '-v', action='store_true',
+        help='save visualization with data')
 
     args = parser.parse_args()
 
-    device_name  = args.device
+    device_name = args.device
     folder = (Path.home()/args.folder)
     if not folder.exists():
         os.system('mkdir -m777 {}'.format(str(folder)))
 
     if args.rate > 56e6 or args.rate < 1e6:
         raise Exception('ERROR: sampling rate should be between 1e6 to 56e6')
-    if args.rate != 56e6 and args.no_header == False:
+    if args.rate != 56e6 and args.no_header is False:
         print('with customized sampling rate, header will not be attached')
         args.no_header = True
 
@@ -63,13 +76,13 @@ def main():
     elif args.band == '5.8':
         fc_list = [5747.5e6, 5767.5e6, 5787.5e6, 5807.5e6, 5827.5e6]
     elif args.band == 'all':
-        fc_list = [2422.3e6, 2442.9e6, 2463.5e6, 5747.5e6, 5767.5e6, 5787.5e6, 5807.5e6, 5827.5e6]
+        fc_list = [2422.3e6, 2442.9e6, 2463.5e6, 5747.5e6,
+                   5767.5e6, 5787.5e6, 5807.5e6, 5827.5e6]
     else:
         if not isinstance(args.frequency, list):
             fc_list = [args.frequency]
         else:
             fc_list = args.frequency
-
 
     if args.duration == 211:
         total_len = 47264068
@@ -78,17 +91,18 @@ def main():
     elif args.duration == 633:
         total_len = 141792068
     if args.no_header:
-        total_len = 0 # no need if no header
-    duration = args.duration / 1000    
+        total_len = 0  # no need if no header
+    duration = args.duration / 1000
 
-    iteration = args.iteration # repeat times for each fc
+    iteration = args.iteration  # repeat times for each fc
     gain = args.gain
 
     for freq in fc_list:
         for _ in range(iteration):
             date_time = datetime.now().strftime('_%Y_%m_%d_%H_%M_%S')
             file_path = folder / (device_name + date_time + '.dat')
-            usrp_capture([freq, str(args.rate), str(duration), str(gain)], str(file_path), total_len-68)
+            usrp_capture([freq, str(args.rate), str(duration),
+                         str(gain)], str(file_path), total_len-68)
             # if run as root, uncomment the following
             os.system('chmod 666 {}'.format(str(file_path)))
             if args.visualize:
@@ -96,14 +110,17 @@ def main():
             if args.no_header:
                 continue
 
-            header = CaptureHeader(version=3, total_len=total_len, sensor_id=int('FFFF', 16),
-                            fc_khz=freq/1000, fs_khz=56e3, bw_khz=44.8e3, gain_db=gain,
-                            start_time_ticks=0, tps=1, num_ant=8, ant_seq=int('76543210', 16),
-                            ant_dwell_time_ms=50, capture_id=123456, capture_mode=1,
-                            drone_search_bitmap=int('FFFFFFFFFFFFFFFF',16))
+            header = CaptureHeader(
+                version=3, total_len=total_len, sensor_id=int('FFFF', 16),
+                fc_khz=freq/1000, fs_khz=56e3, bw_khz=44.8e3, gain_db=gain,
+                start_time_ticks=0, tps=1, num_ant=8,
+                ant_seq=int('76543210', 16), ant_dwell_time_ms=50,
+                capture_id=123456, capture_mode=1,
+                drone_search_bitmap=int('FFFFFFFFFFFFFFFF', 16))
 
             capture = CaptureFile(header=header, path=file_path)
             capture.save()
+
 
 def visualize_data(file_path, fs, fc, duration, gain):
     with file_path.open() as f:
@@ -111,7 +128,7 @@ def visualize_data(file_path, fs, fc, duration, gain):
     data = raw[0::2] + 1j*raw[1::2]
     power = 20 * np.log10(np.sqrt(np.mean((data * np.conj(data)).real)))
     # print('digital power is {p:3.2f} dB'.format(p=power))
-    _, ax = plt.subplots(2, 1, figsize=(10,7))
+    _, ax = plt.subplots(2, 1, figsize=(9, 7))
     ax[0].specgram(data, NFFT=512, Fs=fs/1e6, Fc=fc/1e6)
     ax[0].set_xlabel('time (ms)')
     ax[0].set_xlim(left=0, right=duration * 1e6)
@@ -119,20 +136,22 @@ def visualize_data(file_path, fs, fc, duration, gain):
     ax[0].set_xticklabels(ax[0].get_xticks() / 1000)
     down_sample = 50
     data = data[0:-1:down_sample]
-    ax[1].plot(np.arange(len(data)) / fs * down_sample * 1000, 
-        20 * np.log10(np.abs(data)))
+    ax[1].plot(np.arange(len(data)) / fs * down_sample * 1000,
+               20 * np.log10(np.abs(data)))
     ax[1].set_xlim(left=0, right=duration * 1000)
     ax[1].set_ylim(bottom=20, top=100)
     ax[1].axhline(y=93.3, linestyle='--', color='r')
     ax[1].set_xlabel('time (ms)')
     ax[1].set_ylabel('power (dB)')
-    ax[0].set_title('fc: {fc} MHz, fs: {fs} MHz, gain: {g} dB, power: {p:3.2f} dB' \
-        .format(fc=fc/1e6, fs=fs/1e6, g=gain, p=power))
+    ax[0].set_title('fc: {fc} MHz, fs: {fs} MHz, gain: {g} dB, \
+                    power: {p: 3.2f} dB'.format(fc=fc/1e6,
+                    fs=fs/1e6, g=gain, p=power))
     fig_path = str(file_path.with_suffix('.png'))
     plt.savefig(fig_path)
     plt.close()
-    os.system('chmod 666 {}'.format(fig_path)) # in case run as sudo
+    os.system('chmod 666 {}'.format(fig_path))  # in case run as sudo
     # plt.show()
+
 
 def usrp_capture(command_input, file_path, total_len):
 
@@ -146,7 +165,8 @@ def usrp_capture(command_input, file_path, total_len):
         if retry > 10:
             raise Exception('capture over flow and retry time out.')
         os.system(command)
-        over_flow = os.path.getsize(file_path) < total_len # may more than total_len
+        # may more than total_len
+        over_flow = os.path.getsize(file_path) < total_len
         # print(os.path.getsize(file_path))
 
 
@@ -171,7 +191,7 @@ class CaptureHeader:
     # v3 has three possible payload lengths
     payload_v3_len_1 = 141792000
     payload_v3_len_2 = 103040000
-    payload_v3_len_3 = 47264000 # 211 ms total_len=47264068
+    payload_v3_len_3 = 47264000  # 211 ms total_len=47264068
     # NOTE: v4 does not have a specified payload length
 
     def __init__(self, version, total_len, sensor_id, fc_khz, fs_khz, bw_khz,
