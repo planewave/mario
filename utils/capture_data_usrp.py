@@ -112,7 +112,7 @@ def visualize_data(file_path, fs, fc, duration, gain):
     power = 20 * np.log10(np.sqrt(np.mean((data * np.conj(data)).real)))
     # print('digital power is {p:3.2f} dB'.format(p=power))
     _, ax = plt.subplots(2, 1, figsize=(10,7))
-    ax[0].specgram(data, NFFT=8192, Fs=fs/1e6, Fc=fc/1e6, noverlap=1024)
+    ax[0].specgram(data, NFFT=512, Fs=fs/1e6, Fc=fc/1e6)
     ax[0].set_xlabel('time (ms)')
     ax[0].set_xlim(left=0, right=duration * 1e6)
     ax[0].set_ylabel('frequency (MHz)')
@@ -130,6 +130,7 @@ def visualize_data(file_path, fs, fc, duration, gain):
         .format(fc=fc/1e6, fs=fs/1e6, g=gain, p=power))
     fig_path = str(file_path.with_suffix('.png'))
     plt.savefig(fig_path)
+    plt.close()
     os.system('chmod 666 {}'.format(fig_path)) # in case run as sudo
     # plt.show()
 
