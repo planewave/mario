@@ -17,13 +17,18 @@ def read_dat(file_path, count=-1, offset=92):
 def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('folder', type=str, help='folder of the captures')
+    parser.add_argument('--overwrite', '-o', action='store_true')
     args = parser.parse_args()
     crt_fd = Path(args.folder)
     path_gen = crt_fd.rglob('*.dat')
     for path in path_gen:
         print(str(path))
         dat = read_dat(path)
-        _, ax = plt.subplots(3, 1, figsize=(9, 8))
+        fig_path = str(path.with_suffix('.png'))
+        if fig_path.exists() and not args.overwrite:
+            print('target image exists, skip.')
+            continue
+        _, ax = plt.subplots(3, 1, figsize=(9, 9))
         ax[0].specgram(dat, NFFT=512, Fs=56, noverlap=0, sides='twosided',
                        cmap='viridis')
         ax[0].set_xlabel('time (ms)')
@@ -44,7 +49,6 @@ def main():
         ax[2].set_xlabel('time (ms)')
         ax[2].set_ylabel('power (dB)')
 
-        fig_path = str(path.with_suffix('.png'))
         plt.savefig(fig_path)
         plt.close('all')
 
