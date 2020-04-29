@@ -24,10 +24,11 @@ def main():
     for path in path_gen:
         print(str(path))
         dat = read_dat(path)
-        fig_path = str(path.with_suffix('.png'))
+        fig_path = path.with_suffix('.png')
         if fig_path.exists() and not args.overwrite:
             print('target image exists, skip.')
             continue
+        
         _, ax = plt.subplots(3, 1, figsize=(9, 9))
         ax[0].specgram(dat, NFFT=512, Fs=56, noverlap=0, sides='twosided',
                        cmap='viridis')
@@ -49,7 +50,7 @@ def main():
         ax[2].set_xlabel('time (ms)')
         ax[2].set_ylabel('power (dB)')
 
-        plt.savefig(fig_path)
+        plt.savefig(str(fig_path))
         plt.close('all')
 
 
