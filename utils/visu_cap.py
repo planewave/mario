@@ -24,7 +24,7 @@ def visu_for_analysis(capture, fig_path, nfft=512, fs=56):
     ax[1].set_xlabel('frequency (MHz)')
 
     down_sample = 50
-    data = dat[0:-1:down_sample]
+    data = data[0:-1:down_sample]
     ax[2].plot(np.arange(len(data)) / 56e6 * down_sample * 1000,
                20 * np.log10(np.abs(data)))
     # ax[2].set_xlim(left=0, right=duration * 1000)
@@ -48,21 +48,21 @@ def visu_for_label(capture, fig_path, nfft=512, down_sample=20):
     # down sampling
     data_rsp = data_rsp[:, :nfft]
     data_fft = np.fft.fft(data_rsp)
-    pxx = 20 * np.log10(np.abs(data_fft.T))
-    plt.pcolormesh(np.fft.fftshift(pxx, axes=0))
-    plt.savefig(str(fig_path))
-    plt.close()
+    pxx = np.abs(data_fft.T)
+    pxx[pxx < 1] = 1
+    pxx = np.log10(pxx)
+    plt.imsave(str(fig_path), np.fft.fftshift(pxx, axes=0), cmap='bone_r')
 
 
 def main():
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('folder', type=str, required=True,
+    parser.add_argument('folder', type=str,
                         help='folder of the captures')
     parser.add_argument('--overwrite', '-o',
                         action='store_true', default=False)
-    parser.add_argument('--target_folder', '-t', type=str,
-                        help='')
-    parser.add_argument('--type', type=str, choices=[
+    parser.add_argument('--target_folder', '-f', type=str,
+                        help='specify folder to save spectrograms')
+    parser.add_argument('--type', '-t', type=str, choices=[
                         'analysis', 'label'], default='analysis',
                         help='type of visualization to generate')
     args = parser.parse_args()
@@ -79,7 +79,7 @@ def main():
         if args.target_folder is None:
             fig_path = path.with_suffix('.jpg')
         else:
-            fig_path = Path(args.target_folder) / path.name.with_suffix('.png')
+            fig_path = Path(args.target_folder) / Path(path.name).with_suffix('.jpg')
 
         if fig_path.exists() and not args.overwrite:
             print('target image exists, skip.')
