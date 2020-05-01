@@ -47,11 +47,14 @@ def visu_for_label(capture, fig_path, nfft=512, down_sample=20):
     data_rsp = np.reshape(data[:seg_len], (nfft, -1))
     # down sampling
     data_rsp = data_rsp[:, :nfft]
-    data_fft = np.fft.fft(data_rsp)
+    data_fft = np.fft.fft(data_rsp, axis=1)
+    data_fft = np.fft.fftshift(data_fft, axes=1)
+    data_fft = np.flip(data_fft, axis=1)
     pxx = np.abs(data_fft.T)
     pxx[pxx < 1] = 1
     pxx = np.log10(pxx)
-    plt.imsave(str(fig_path), np.fft.fftshift(pxx, axes=0), cmap='bone_r')
+    plt.imsave(str(fig_path), pxx, cmap='bone_r')
+    return 0
 
 
 def main():
