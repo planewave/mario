@@ -73,13 +73,17 @@ def main():
     elif args.type == 'label':
         visu = visu_for_label
 
+    if args.target_folder is not None:
+        target_folder = Path(args.target_folder)
+        target_folder.mkdir(exist_ok=True)
+
     for path in path_gen:
         print(str(path))
         capture = sfh.CaptureFile(path=str(path))
         if args.target_folder is None:
             fig_path = path.with_suffix('.jpg')
         else:
-            fig_path = Path(args.target_folder) / Path(path.name).with_suffix('.jpg')
+            fig_path = target_folder / Path(path.name).with_suffix('.jpg')
 
         if fig_path.exists() and not args.overwrite:
             print('target image exists, skip.')
