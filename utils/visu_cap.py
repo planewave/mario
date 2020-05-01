@@ -3,8 +3,14 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import argparse
 import signal_file_handler as sfh
+
 """
-plot spectrograms from captures in a folder
+plot spectrograms, time and frequency domain plots from captures in a folder
+
+usage: python visu_cap.py [folder path] 
+-f [target folder to store images, same folder by default]
+-o overwrite the exist imagesS 
+
 """
 
 
@@ -20,18 +26,19 @@ def visu_for_analysis(capture, fig_path, nfft=512, fs=56):
         fc=capture.header.fc_khz/1e3, fs=capture.header.fs_khz/1e3,
         g=capture.header.gain_db))
 
-    ax[1].psd(data, NFFT=nfft, Fs=fs, noverlap=0)
-    ax[1].set_xlabel('frequency (MHz)')
+    ax[2].psd(data, NFFT=nfft, Fs=fs, noverlap=0)
+    ax[2].set_xlabel('frequency (MHz)')
 
     down_sample = 50
-    data = data[0:-1:down_sample]
-    ax[2].plot(np.arange(len(data)) / 56e6 * down_sample * 1000,
-               20 * np.log10(np.abs(data)))
-    # ax[2].set_xlim(left=0, right=duration * 1000)
-    ax[2].set_ylim(bottom=20, top=80)
-    ax[2].axhline(y=70, linestyle='--', color='r')
-    ax[2].set_xlabel('time (ms)')
-    ax[2].set_ylabel('power (dB)')
+    data = np.abs(data[0:-1:down_sample])
+    data[data < 1] = 1
+    time = np.arange(len(data)) / 56e6 * down_sample * 1000
+    ax[1].plot(time, 20 * np.log10(data))
+    ax[1].set_ylim(bottom=20, top=80)
+    ax[1].set_xlim(left=0, right=time[-1])
+    ax[1].axhline(y=70, linestyle='--', color='r')
+    ax[1].set_xlabel('time (ms)')
+    ax[1].set_ylabel('power (dB)')
 
     plt.savefig(str(fig_path))
     plt.close()
