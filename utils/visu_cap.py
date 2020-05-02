@@ -48,19 +48,24 @@ def visu_for_analysis(capture, fig_path, nfft=512, fs=56):
 def visu_for_label(capture, fig_path, nfft=512, down_sample=20):
     data = capture.payload
     seg_len = nfft * nfft * down_sample
-    if len(data) < seg_len:
-        print('Warning, capture length too short, skipped')
-        return 1
-    data_rsp = np.reshape(data[:seg_len], (nfft, -1))
-    # down sampling
-    data_rsp = data_rsp[:, :nfft]
-    data_fft = np.fft.fft(data_rsp, axis=1)
-    data_fft = np.fft.fftshift(data_fft, axes=1)
-    data_fft = np.flip(data_fft, axis=1)
-    pxx = np.abs(data_fft.T)
-    pxx[pxx < 1] = 1
-    pxx = np.log10(pxx)
-    plt.imsave(str(fig_path), pxx, cmap='bone_r')
+    nseg = len(data) // seg_len
+    for idx_seg in range(nseg):
+        data_rsp = np.reshape(data[idx_seg * seg_len :
+                              (idx_seg + 1) * seg_len], (nfft, -1))
+        # down sampling
+        data_rsp = data_rsp[:, :nfft]
+        data_fft = np.fft.fft(data_rsp, axis=1)
+        # data_fft = np.fft.fftshift(data_fft, axes=1)
+        data_fft = np.flip(data_fft, axis=1)
+        shift = np.random.randint(nfft)
+        data_fft = np.roll(data_fft, shift, axis=1)
+
+        data_fft = np.abs(data_fft.T)
+        data_fft[data_fft < 1] = 1
+        data_fft = np.log10(data_fft)       
+        name = fig_path.stem + '_' + str(idx_seg) + '.jpg'
+        plt.imsave(str(fig_path.with_name(name)), data_fft, cmap='bone_r')
+    
     return 0
 
 
