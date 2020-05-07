@@ -7,9 +7,9 @@ import signal_file_handler as sfh
 """
 plot spectrograms, time and frequency domain plots from captures in a folder
 
-usage: python visu_cap.py [folder path] 
+usage: python visu_cap.py [folder path]
 -f [target folder to store images, same folder by default]
--o overwrite the exist imagesS 
+-o overwrite the exist images
 
 """
 
@@ -50,7 +50,7 @@ def visu_for_label(capture, fig_path, nfft=512, down_sample=20):
     seg_len = nfft * nfft * down_sample
     nseg = len(data) // seg_len
     for idx_seg in range(nseg):
-        data_rsp = np.reshape(data[idx_seg * seg_len :
+        data_rsp = np.reshape(data[idx_seg * seg_len:
                               (idx_seg + 1) * seg_len], (nfft, -1))
         # down sampling
         data_rsp = data_rsp[:, :nfft]
@@ -62,10 +62,10 @@ def visu_for_label(capture, fig_path, nfft=512, down_sample=20):
 
         data_fft = np.abs(data_fft.T)
         data_fft[data_fft < 1] = 1
-        data_fft = np.log10(data_fft)       
+        data_fft = np.log10(data_fft)
         name = fig_path.stem + '_' + str(idx_seg) + '.jpg'
         plt.imsave(str(fig_path.with_name(name)), data_fft, cmap='bone_r')
-    
+
     return 0
 
 
