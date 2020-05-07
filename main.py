@@ -1,17 +1,23 @@
-import argparse
+from argparse import ArgumentParser
 
 import torch
 from torch.nn import functional as F
 from torch import nn
+
 import pytorch_lightning as pl
-from pytorch_lightning import Trainer
 
 
-class Net(pl.LightningModule):
+class LitModel(pl.LightningModule):
 
     def __init__(self):
         super().__init__()
-        # set up layers in the model
+
+        self.hparams = hparams
+        # It adds them automatically to tensorboard
+        # logs under the hparams tab.
+        # Lightning will save those hparams to the checkpoint
+        # and use them to restore the module correctly.
+
         pass
 
     def forward(self, x):
@@ -34,36 +40,54 @@ class Net(pl.LightningModule):
         # return a DataLoader
         pass
 
-    def val_dataloader(self):
-        pass
-
-    def test_dataloader(self):
-        pass
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        output = self(x)
+        loss = F.nll_loss(output, y)
+        logs = {'loss': loss}
+        return {'loss': loss, 'log': logs}
 
     def configure_optimizers(self):
         return Adam(self.parameters(), lr=1e-3)
 
-    def training_step(self, batch, batch_idx):
-        # training loop
-        # return logs, loss
-        logs = {'loss': loss}
-        pass {'loss': loss, 'log': logs}
+    def val_dataloader(self):
+        pass
 
     def validation_step(self, batch):
+        return {'val_loss': loss}
+
+    def test_dataloader(self):
         pass
 
-    def validation_epoch_end(self):
-        pass
+    def test_step(self, batch, batch_idx):
+        return {'val_loss': loss}
+
+    @staticmethod
+    def add_model_specific_args(parent_parser):
+        parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        parser.add_argument('--encoder_layers', type=int, default=12)
+        parser.add_argument('--data_path', type=str, default='/some/path')
+        return parser
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=100,
-                        help="number of epochs")
-    parser.add_argument("--batch_size", type=int, default=8,
-                        help="size of each image batch")
-    args = parser.parse_args()
+    parser = ArgumentParser()
 
-    net = Net()
-    trainer = Trainer(gpus=1)
-    trainer.fit(net)
+    # add PROGRAM level args
+    # parser.add_argument('--conda_env', type=str, default='some_name')
+
+    # add model specific args
+    parser = LitModel.add_model_specific_args(parser)
+
+    # add all the available trainer options to argparse
+    # ie: now --gpus --num_nodes ...
+    parser = pl.Trainer.add_argparse_args(parser)  # gpus=1
+    hparams = parser.parse_args()
+
+    model = LitModel(hparams)
+    trainer = pl.Trainer.from_argparse_args(hparams)
+    trainer.fit(model)
+
+    # run test set
+    # model = LitModel.load_from_checkpoint(PATH)
+    # trainer.test()
