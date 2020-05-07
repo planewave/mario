@@ -1,0 +1,26 @@
+{
+  "version": "4.2.10",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "P4_dr",
+      "points": [
+        [
+          0.7042253521126761,
+          60.971830985915496
+        ],
+        [
+          485.9154929577465,
+          151.11267605633805
+        ]
+      ],
+      "group_id": null,
+      "shape_type": "rectangle",
+      "flags": {}
+    }
+  ],
+  "imagePath": "SF1200000178_1_07_36_2422300_2019_9_19_12_56_44_1.jpg",
+  "imageData": null,
+  "imageHeight": 512,
+  "imageWidth": 512
+}
