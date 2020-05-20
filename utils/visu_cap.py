@@ -14,7 +14,8 @@ usage: python visu_cap.py [folder path]
 """
 
 
-def visu_for_analysis(capture, fig_path, nfft=512, fs=56, ant_idx=True):
+def visu_for_analysis(capture, fig_path, nfft=512, fs=56, ant_idx=True, **kwargs):
+
     data = capture.payload
     _, ax = plt.subplots(3, 1, figsize=(8, 10))
     ax[0].specgram(data, NFFT=nfft, Fc=capture.header.fc_khz/1e3, Fs=fs,
@@ -43,17 +44,19 @@ def visu_for_analysis(capture, fig_path, nfft=512, fs=56, ant_idx=True):
         for idx in range(capture.header.num_ant):
             ax[1].axvline(x=(idx+1)*dwell_time, linestyle='--', color='k')
             ant_seq = int(capture.header.ant_seq / (2 ** (4 * idx))) % 16
-            ax[1].text(x=idx*dwell_time+1, y=22S, s=str(ant_seq))
+            ax[1].text(x=idx*dwell_time+1, y=22, s=str(ant_seq))
 
     ax[1].set_xlabel('time (ms)')
     ax[1].set_ylabel('power (dB)')
 
     plt.savefig(str(fig_path))
     plt.close()
+
     return 0
 
 
-def visu_for_label(capture, fig_path, nfft=512, down_sample=20):
+def visu_for_label(capture, fig_path, nfft=512, down_sample=20, **kwargs):
+
     data = capture.payload
     seg_len = nfft * nfft * down_sample
     nseg = len(data) // seg_len
@@ -83,6 +86,8 @@ def main():
                         help='folder of the captures')
     parser.add_argument('--overwrite', '-o',
                         action='store_true', default=False)
+    parser.add_argument('--ant_idx', '-a',
+                        action='store_true', default=False)                    
     parser.add_argument('--target_folder', '-f', type=str,
                         help='specify folder to save spectrograms')
     parser.add_argument('--type', '-t', type=str, choices=[
@@ -111,7 +116,7 @@ def main():
         if fig_path.exists() and not args.overwrite:
             print('target image exists, skip.')
             continue
-        visu(capture, fig_path)
+        visu(capture, fig_path, ant_idx=args.ant_idx)
 
 
 if __name__ == "__main__":
