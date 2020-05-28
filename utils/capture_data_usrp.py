@@ -143,9 +143,9 @@ def visualize_data(file_path, fs, fc, duration, gain):
     ax[1].axhline(y=93.3, linestyle='--', color='r')
     ax[1].set_xlabel('time (ms)')
     ax[1].set_ylabel('power (dB)')
-    ax[0].set_title('fc: {fc} MHz, fs: {fs} MHz, gain: {g} dB, \
-                    power: {p: 3.2f} dB'.format(fc=fc/1e6,
-                    fs=fs/1e6, g=gain, p=power))
+    ax[0].set_title(
+        'fc: {fc} MHz, fs: {fs} MHz, gain: {g} dB, power: {p: 3.2f} dB'
+        .format(fc=fc/1e6, fs=fs/1e6, g=gain, p=power))
     fig_path = str(file_path.with_suffix('.png'))
     plt.savefig(fig_path)
     plt.close()
