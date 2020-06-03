@@ -111,10 +111,10 @@ def main():
                 continue
 
             header = CaptureHeader(
-                version=3, total_len=total_len, sensor_id=int('FFFF', 16),
+                version=3, total_len=total_len, sensor_id=int('1', 16),
                 fc_khz=freq/1000, fs_khz=56e3, bw_khz=44.8e3, gain_db=gain,
-                start_time_ticks=0, tps=1, num_ant=8,
-                ant_seq=int('76543210', 16), ant_dwell_time_ms=50,
+                start_time_ticks=0, tps=1, num_ant=1,
+                ant_seq=int('76543210', 16), ant_dwell_time_ms=int(args.duration),
                 capture_id=123456, capture_mode=1,
                 drone_search_bitmap=int('FFFFFFFFFFFFFFFF', 16))
 
@@ -128,23 +128,25 @@ def visualize_data(file_path, fs, fc, duration, gain):
     data = raw[0::2] + 1j*raw[1::2]
     power = 20 * np.log10(np.sqrt(np.mean((data * np.conj(data)).real)))
     # print('digital power is {p:3.2f} dB'.format(p=power))
-    _, ax = plt.subplots(2, 1, figsize=(9, 7))
+    _, ax = plt.subplots(3, 1, figsize=(9, 10))
     ax[0].specgram(data, NFFT=512, Fs=fs/1e6, Fc=fc/1e6)
     ax[0].set_xlabel('time (ms)')
     ax[0].set_xlim(left=0, right=duration * 1e6)
     ax[0].set_ylabel('frequency (MHz)')
     ax[0].set_xticklabels(ax[0].get_xticks() / 1000)
+    ax[2].psd(data, NFFT=512, Fs=fs/1e6, Fc=fc/1e6, noverlap=0)
+    ax[2].set_xlabel('frequency (MHz)')
     down_sample = 50
     data = data[0:-1:down_sample]
     ax[1].plot(np.arange(len(data)) / fs * down_sample * 1000,
-               20 * np.log10(np.abs(data)))
+               20 * np.log10(np.abs(data) + 1e-3))
     ax[1].set_xlim(left=0, right=duration * 1000)
     ax[1].set_ylim(bottom=20, top=100)
     ax[1].axhline(y=93.3, linestyle='--', color='r')
     ax[1].set_xlabel('time (ms)')
     ax[1].set_ylabel('power (dB)')
     ax[0].set_title(
-        'fc: {fc} MHz, fs: {fs} MHz, gain: {g} dB, power: {p: 3.2f} dB'
+        'fc: {fc} MHz, fs: {fs} MHz, gain: {g} dB, power: {p:3.2f} dB'
         .format(fc=fc/1e6, fs=fs/1e6, g=gain, p=power))
     fig_path = str(file_path.with_suffix('.png'))
     plt.savefig(fig_path)
