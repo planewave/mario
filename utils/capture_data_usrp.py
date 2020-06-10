@@ -157,7 +157,7 @@ def visualize_data(file_path, fs, fc, duration, gain):
 
 def usrp_capture(command_input, file_path, total_len):
 
-    command = '/usr/local/lib/uhd/examples/rx_samples_to_file' \
+    command = '/usr/local/lib/uhd/examples/rx_samples_to_file --bw 44.8e6' \
         ' --freq {} --rate {} --duration {} --gain {} --file {}' \
         .format(*command_input, file_path)
     over_flow = True
