@@ -35,8 +35,8 @@ def main():
         '--frequency', '-f', type=float, nargs="+", default=None,
         help='carrier frequency in Hz')
     parser.add_argument(
-        '--band', '-b', choices=['2.4', '5.8', 'all'], default=None,
-        help='frequency band, choose from 2.4, 5.8 or all, \
+        '--band', '-b', choices=['24', '58', '2458', '800900'], default=None,
+        help='choose one frequency band, \
         choose `frequency` or `band` to set up the fc of USRP')
     parser.add_argument(
         '--gain', '-g', type=int, default=10, help='optional, USRP Rx gain')
@@ -71,13 +71,15 @@ def main():
         fc_list = [2422.3e6]
     elif args.band is not None and args.frequency is not None:
         raise Exception('ERROR: only one of band or frequency can be set')
-    elif args.band == '2.4':
+    elif args.band == '24':
         fc_list = [2422.3e6, 2442.9e6, 2463.5e6]
-    elif args.band == '5.8':
+    elif args.band == '58':
         fc_list = [5747.5e6, 5767.5e6, 5787.5e6, 5807.5e6, 5827.5e6]
-    elif args.band == 'all':
+    elif args.band == '2458':
         fc_list = [2422.3e6, 2442.9e6, 2463.5e6, 5747.5e6,
                    5767.5e6, 5787.5e6, 5807.5e6, 5827.5e6]
+    elif args.band == '800900':
+        fc_list = [801e6, 831e6, 861e6, 891e6, 921e6]
     else:
         if not isinstance(args.frequency, list):
             fc_list = [args.frequency]
@@ -112,7 +114,7 @@ def main():
 
             header = CaptureHeader(
                 version=3, total_len=total_len, sensor_id=int('1', 16),
-                fc_khz=freq/1000, fs_khz=56e3, bw_khz=44.8e3, gain_db=gain,
+                fc_khz=freq/1000, fs_khz=56e3, bw_khz=56e3, gain_db=gain,
                 start_time_ticks=0, tps=1, num_ant=1,
                 ant_seq=int('76543210', 16), ant_dwell_time_ms=int(args.duration),
                 capture_id=123456, capture_mode=1,
@@ -157,7 +159,7 @@ def visualize_data(file_path, fs, fc, duration, gain):
 
 def usrp_capture(command_input, file_path, total_len):
 
-    command = '/usr/local/lib/uhd/examples/rx_samples_to_file --bw 44.8e6' \
+    command = '/usr/local/lib/uhd/examples/rx_samples_to_file --bw 56e6' \
         ' --freq {} --rate {} --duration {} --gain {} --file {}' \
         .format(*command_input, file_path)
     over_flow = True
