@@ -47,12 +47,14 @@ def main():
         '--duration', '-t', type=int, choices=[211, 460, 633], default=211,
         help='optional, capture length in milisecond')
     parser.add_argument(
-        '--no_header', '-n', action='store_true',
+        '--no_header', '-nh', action='store_true',
         help='save raw data without header')
     parser.add_argument(
         '--visualize', '-v', action='store_true',
         help='save visualization with data')
-
+    parser.add_argument(
+        '--no_data', '-nd', action='store_true',
+        help='don\'t save data file, work with -v')
     args = parser.parse_args()
 
     device_name = args.device
@@ -109,6 +111,9 @@ def main():
             os.system('chmod 666 {}'.format(str(file_path)))
             if args.visualize:
                 visualize_data(file_path, args.rate, freq, duration, gain)
+            if args.no_data:
+                file_path.unlink()
+                continue
             if args.no_header:
                 continue
 
@@ -138,6 +143,8 @@ def visualize_data(file_path, fs, fc, duration, gain):
     ax[0].set_xticklabels(ax[0].get_xticks() / 1000)
     ax[2].psd(data, NFFT=512, Fs=fs/1e6, Fc=fc/1e6, noverlap=0)
     ax[2].set_xlabel('frequency (MHz)')
+    ax[2].set_ylim(bottom=15, top=75)
+    ax[2].set_yticks(np.arange(15, 75, 10))
     down_sample = 50
     data = data[0:-1:down_sample]
     ax[1].plot(np.arange(len(data)) / fs * down_sample * 1000,
