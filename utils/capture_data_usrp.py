@@ -143,8 +143,8 @@ def visualize_data(file_path, fs, fc, duration, gain):
     ax[0].set_xticklabels(ax[0].get_xticks() / 1000)
     ax[2].psd(data, NFFT=512, Fs=fs/1e6, Fc=fc/1e6, noverlap=0)
     ax[2].set_xlabel('frequency (MHz)')
-    ax[2].set_ylim(bottom=15, top=75)
-    ax[2].set_yticks(np.arange(15, 75, 10))
+    ax[2].set_ylim(bottom=10, top=75)
+    ax[2].set_yticks(np.arange(10, 75, 10))
     down_sample = 50
     data = data[0:-1:down_sample]
     ax[1].plot(np.arange(len(data)) / fs * down_sample * 1000,
@@ -166,7 +166,7 @@ def visualize_data(file_path, fs, fc, duration, gain):
 
 def usrp_capture(command_input, file_path, total_len):
 
-    command = '/usr/local/lib/uhd/examples/rx_samples_to_file --bw 56e6' \
+    command = '/usr/local/lib/uhd/examples/rx_samples_to_file' \
         ' --freq {} --rate {} --duration {} --gain {} --file {}' \
         .format(*command_input, file_path)
     over_flow = True

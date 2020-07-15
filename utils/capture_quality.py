@@ -5,6 +5,7 @@ capture quality evaluation
 import numpy as np
 import argparse
 
+
 def detect_saturation(file_path, thr_satu=1600):
     with open(file_path, 'rb') as f:
         raw = np.fromfile(f, dtype=np.int16)
@@ -16,7 +17,8 @@ def detect_saturation(file_path, thr_satu=1600):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('file_path', type=str)
-    parser.add_argument('--function', '-f', choices=['saturation', 'background'])
+    parser.add_argument('--function', '-f',
+                        choices=['saturation', 'background'])
     args = parser.parse_args()
 
     if args.function == 'saturation':
