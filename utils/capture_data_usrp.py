@@ -94,6 +94,8 @@ def main():
         total_len = 103040068
     elif args.duration == 633:
         total_len = 141792068
+    else:
+        raise Exception('unsupported duration')
     if args.no_header:
         total_len = 0  # no need if no header
     duration = args.duration / 1000
@@ -106,7 +108,7 @@ def main():
             date_time = datetime.now().strftime('_%Y_%m_%d_%H_%M_%S')
             file_path = folder / (device_name + date_time + '.dat')
             usrp_capture([freq, str(args.rate), str(duration),
-                         str(gain)], str(file_path), total_len-68)
+                          str(gain)], str(file_path), total_len-68)
             # if run as root, uncomment the following
             os.system('chmod 666 {}'.format(str(file_path)))
             if args.visualize:
@@ -121,7 +123,8 @@ def main():
                 version=3, total_len=total_len, sensor_id=int('1', 16),
                 fc_khz=freq/1000, fs_khz=56e3, bw_khz=56e3, gain_db=gain,
                 start_time_ticks=0, tps=1, num_ant=1,
-                ant_seq=int('76543210', 16), ant_dwell_time_ms=int(args.duration),
+                ant_seq=int('76543210', 16),
+                ant_dwell_time_ms=int(args.duration),
                 capture_id=123456, capture_mode=1,
                 drone_search_bitmap=int('FFFFFFFFFFFFFFFF', 16))
 
@@ -133,21 +136,21 @@ def visualize_data(file_path, fs, fc, duration, gain):
     with file_path.open() as f:
         raw = np.fromfile(f, dtype=np.int16)
     data = raw[0::2] + 1j*raw[1::2]
-    power = 20 * np.log10(np.sqrt(np.mean((data * np.conj(data)).real)))
+    power = 20 * np.log10(np.sqrt(np.mean((data * data.conj()).real)))
     # print('digital power is {p:3.2f} dB'.format(p=power))
     _, ax = plt.subplots(3, 1, figsize=(9, 10))
     ax[0].specgram(data, NFFT=512, Fs=fs/1e6, Fc=fc/1e6)
     ax[0].set_xlabel('time (ms)')
-    ax[0].set_xlim(left=0, right=duration * 1e6)
+    ax[0].set_xlim(left=0, right=duration*1e6)
     ax[0].set_ylabel('frequency (MHz)')
-    ax[0].set_xticklabels(ax[0].get_xticks() / 1000)
+    ax[0].set_xticklabels(ax[0].get_xticks()/1000)
     ax[2].psd(data, NFFT=512, Fs=fs/1e6, Fc=fc/1e6, noverlap=0)
     ax[2].set_xlabel('frequency (MHz)')
     ax[2].set_ylim(bottom=10, top=75)
     ax[2].set_yticks(np.arange(10, 75, 10))
     down_sample = 50
     data = data[0:-1:down_sample]
-    ax[1].plot(np.arange(len(data)) / fs * down_sample * 1000,
+    ax[1].plot(np.arange(data.size) / fs * down_sample * 1000,
                20 * np.log10(np.abs(data) + 1e-3))
     ax[1].set_xlim(left=0, right=duration * 1000)
     ax[1].set_ylim(bottom=20, top=100)
@@ -233,9 +236,8 @@ class CaptureHeader:
 
 
 class CaptureFile:
-    '''
-    Class representation of capture data.
-    '''
+    '''Class representation of capture data'''
+
     def __init__(self, header, path):
         self.header = header
         self.path = path
