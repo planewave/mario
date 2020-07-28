@@ -16,12 +16,10 @@ import argparse
 
 
 def main():
-    if not Path('/usr/local/lib/uhd/examples').is_dir():
-        raise Exception('UHD cannot be found')
 
     parser = argparse.ArgumentParser(
         description='Collect data using USRP. \
-        Use `python3` (may need root privileges) to run')
+        Use `python3` to run')
     parser.add_argument(
         '--folder', '-fd', type=str, default='usrp_capture',
         help='optional, the folder name (under HOME) that save the data')
@@ -60,7 +58,7 @@ def main():
     device_name = args.device
     folder = (Path.home()/args.folder)
     if not folder.exists():
-        os.system('mkdir -m777 {}'.format(str(folder)))
+        folder.mkdir()
 
     if args.rate > 56e6 or args.rate < 1e6:
         raise Exception('ERROR: sampling rate should be between 1e6 to 56e6')
@@ -110,7 +108,7 @@ def main():
             usrp_capture([freq, str(args.rate), str(duration),
                           str(gain)], str(file_path), total_len-68)
             # if run as root, uncomment the following
-            os.system('chmod 666 {}'.format(str(file_path)))
+            # os.system('chmod 666 {}'.format(str(file_path)))
             if args.visualize:
                 visualize_data(file_path, args.rate, freq, duration, gain)
             if args.no_data:
@@ -163,14 +161,16 @@ def visualize_data(file_path, fs, fc, duration, gain):
     fig_path = str(file_path.with_suffix('.png'))
     plt.savefig(fig_path)
     plt.close()
-    os.system('chmod 666 {}'.format(fig_path))  # in case run as sudo
+    # os.system('chmod 666 {}'.format(fig_path))  # in case run as sudo
     # plt.show()
 
 
 def usrp_capture(command_input, file_path, total_len):
-
-    command = '/usr/local/lib/uhd/examples/rx_samples_to_file' \
-        ' --freq {} --rate {} --duration {} --gain {} --file {}' \
+    if os.name == 'posix':
+        rx_cmd = '/usr/local/lib/uhd/examples/rx_samples_to_file'
+    else:
+        rx_cmd = "'C:/Program Files/UHD/lib/uhd/examples/rx_samples_to_file.exe'"
+    command = rx_cmd + ' --freq {} --rate {} --duration {} --gain {} --file {}' \
         .format(*command_input, file_path)
     over_flow = True
     retry = 0
