@@ -37,7 +37,7 @@ def main():
         help='choose one frequency band, \
         choose `frequency` or `band` to set up the fc of USRP')
     parser.add_argument(
-        '--gain', '-g', type=int, default=10, help='optional, USRP Rx gain')
+        '--gain', '-g', type=int, default=25, help='optional, USRP Rx gain')
     parser.add_argument(
         '--iteration', '-i', type=int, default=1,
         help='optional, number of captures for each fc')
@@ -119,7 +119,7 @@ def main():
 
             header = CaptureHeader(
                 version=3, total_len=total_len, sensor_id=int('1', 16),
-                fc_khz=freq/1000, fs_khz=56e3, bw_khz=56e3, gain_db=gain,
+                fc_khz=freq/1000, fs_khz=56e3, bw_khz=55e3, gain_db=gain,
                 start_time_ticks=0, tps=1, num_ant=1,
                 ant_seq=int('76543210', 16),
                 ant_dwell_time_ms=int(args.duration),
@@ -175,7 +175,7 @@ def usrp_capture(command_input, file_path, total_len):
         rx_cmd = '/usr/local/lib/uhd/examples/rx_samples_to_file'
     else:
         rx_cmd = r'"C:\Program Files\UHD\lib\uhd\examples\rx_samples_to_file.exe"'
-    command = rx_cmd + ' --freq {} --rate {} --duration {} --gain {} --file {}' \
+    command = rx_cmd + ' --freq {} --rate {} --duration {} --gain {} --bw 55e6 --file {}' \
         .format(*command_input, file_path)
     over_flow = True
     retry = 0
@@ -188,7 +188,7 @@ def usrp_capture(command_input, file_path, total_len):
         if os.name == 'posix':
             over_flow = os.path.getsize(file_path) < total_len
         else:
-        over_flow = False
+            over_flow = False
         # print(os.path.getsize(file_path))
 
 
