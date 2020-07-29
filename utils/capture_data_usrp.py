@@ -166,10 +166,15 @@ def visualize_data(file_path, fs, fc, duration, gain):
 
 
 def usrp_capture(command_input, file_path, total_len):
+    """capture data using USRP
+    try to support both Linux (os.name == 'posix') and Windows
+    there is still a problem that the stream speed in Windows is not
+    fast enough, so the over_flow detection is disabled.
+    """
     if os.name == 'posix':
         rx_cmd = '/usr/local/lib/uhd/examples/rx_samples_to_file'
     else:
-        rx_cmd = "'C:/Program Files/UHD/lib/uhd/examples/rx_samples_to_file.exe'"
+        rx_cmd = r'"C:\Program Files\UHD\lib\uhd\examples\rx_samples_to_file.exe"'
     command = rx_cmd + ' --freq {} --rate {} --duration {} --gain {} --file {}' \
         .format(*command_input, file_path)
     over_flow = True
@@ -180,7 +185,10 @@ def usrp_capture(command_input, file_path, total_len):
             raise Exception('capture over flow and retry time out.')
         os.system(command)
         # may more than total_len
-        over_flow = os.path.getsize(file_path) < total_len
+        if os.name == 'posix':
+            over_flow = os.path.getsize(file_path) < total_len
+        else:
+        over_flow = False
         # print(os.path.getsize(file_path))
 
 
