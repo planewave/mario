@@ -1,7 +1,7 @@
 """
 This is a stand alone script that captures and saves data using USRP.
-The save format is designed to be compatible with the engineD
 
+The save format is designed to be compatible with the engineD
 to install matplotlib:
 sudo apt-get install python3-matplotlib
 """
@@ -16,7 +16,7 @@ import argparse
 
 
 def main():
-
+    """main."""
     parser = argparse.ArgumentParser(
         description='Collect data using USRP. \
         Use `python3` to run')
@@ -131,6 +131,7 @@ def main():
 
 
 def visualize_data(file_path, fs, fc, duration, gain):
+    """visualization."""
     with file_path.open() as f:
         raw = np.fromfile(f, dtype=np.int16)
     data = raw[0::2] + 1j*raw[1::2]
@@ -141,6 +142,7 @@ def visualize_data(file_path, fs, fc, duration, gain):
     ax[0].set_xlabel('time (ms)')
     ax[0].set_xlim(left=0, right=duration*1e6)
     ax[0].set_ylabel('frequency (MHz)')
+    ax[0].set_xticks(ax[0].get_xticks())
     ax[0].set_xticklabels(ax[0].get_xticks()/1000)
     ax[2].psd(data, NFFT=512, Fs=fs/1e6, Fc=fc/1e6, noverlap=0)
     ax[2].set_xlabel('frequency (MHz)')
@@ -161,12 +163,13 @@ def visualize_data(file_path, fs, fc, duration, gain):
     fig_path = str(file_path.with_suffix('.png'))
     plt.savefig(fig_path)
     plt.close()
-    # os.system('chmod 666 {}'.format(fig_path))  # in case run as sudo
+    os.system('chmod 666 {}'.format(fig_path))  # in case run as sudo
     # plt.show()
 
 
 def usrp_capture(command_input, file_path, total_len):
-    """capture data using USRP
+    """Capture data using USRP.
+
     try to support both Linux (os.name == 'posix') and Windows
     there is still a problem that the stream speed in Windows is not
     fast enough, so the over_flow detection is disabled.
@@ -174,9 +177,10 @@ def usrp_capture(command_input, file_path, total_len):
     if os.name == 'posix':
         rx_cmd = '/usr/local/lib/uhd/examples/rx_samples_to_file'
     else:
-        rx_cmd = r'"C:\Program Files\UHD\lib\uhd\examples\rx_samples_to_file.exe"'
-    command = rx_cmd + ' --freq {} --rate {} --duration {} --gain {} --bw 55e6 --file {}' \
-        .format(*command_input, file_path)
+        rx_cmd = r'''C:\Program Files\UHD\lib\uhd\examples\
+            rx_samples_to_file.exe'''
+    command = rx_cmd + ' --freq {} --rate {} --duration {} --gain {} \
+        --bw 55e6 --file {}'.format(*command_input, file_path)
     over_flow = True
     retry = 0
     while over_flow:
@@ -193,6 +197,8 @@ def usrp_capture(command_input, file_path, total_len):
 
 
 class CaptureHeader:
+    """Capture header."""
+
     # 'static' variables
     header_v1_format = '>IIIIIIQQ'
     # NOTE: this length includes the 'total_len' field
@@ -220,6 +226,7 @@ class CaptureHeader:
                  gain_db, start_time_ticks, tps, num_ant=None, ant_seq=None,
                  ant_dwell_time_ms=None, capture_id=None, capture_mode=None,
                  drone_search_bitmap=None, mat=False):
+        """Constructor."""
         self.header_version = version
 
         # fields in the actual file header
@@ -244,13 +251,15 @@ class CaptureHeader:
 
 
 class CaptureFile:
-    '''Class representation of capture data'''
+    """Class representation of capture data."""
 
     def __init__(self, header, path):
+        """Constructor."""
         self.header = header
         self.path = path
 
     def save(self):
+        """Save."""
         with self.path.open('r+b') as f:
             raw_data = f.read()
             f.seek(0)
