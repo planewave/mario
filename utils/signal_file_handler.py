@@ -24,8 +24,8 @@ class DataReadException(Exception):
 
 class SpectrogramHeader:
     # 'static' variables
-    HEADER_FORMAT = "=BBBBIIIQQIIIIQQIIIIIIffIIBBBBBBBB"
-    HEADER_LEN_BYTES = 112
+    HEADER_FORMAT = "=BBBBIIIQQIIIIIIIIffIIBBBBBBBB"
+    HEADER_LEN_BYTES = 88
     PAYLOAD_BYTEORDER = "="
     PAYLOAD_FORMAT = "f"
 
@@ -40,10 +40,6 @@ class SpectrogramHeader:
         fs_khz,
         bw_khz,
         gain_db,
-        drone_search_bitmap,
-        ant_seq,
-        ant_dwell_time_ms,
-        num_ant,
         nfft,
         window_len,
         overlap_len,
@@ -73,10 +69,6 @@ class SpectrogramHeader:
         self.fs_khz = np.uint32(fs_khz)
         self.bw_khz = np.uint32(bw_khz)
         self.gain_db = np.uint32(gain_db)
-        self.drone_search_bitmap = np.uint64(drone_search_bitmap)
-        self.ant_seq = np.uint64(ant_seq)
-        self.ant_dwell_time_ms = np.uint32(ant_dwell_time_ms)
-        self.num_ant = np.uint32(num_ant)
         self.nfft = np.uint32(nfft)
         self.window_len = np.uint32(window_len)
         self.overlap_len = np.uint32(overlap_len)
@@ -126,6 +118,7 @@ class SpectrogramFile:
         # save file
         with open(dest_path, "wb") as f:
             # pack bytes in header
+            # BBBB III QQ IIIIIIII ff IIBBBBBBBB
             header_bytes = struct.pack(
                 SpectrogramHeader.HEADER_FORMAT,
                 self.header.header_version,
@@ -141,10 +134,6 @@ class SpectrogramFile:
                 self.header.fs_khz,
                 self.header.bw_khz,
                 self.header.gain_db,
-                self.header.drone_search_bitmap,
-                self.header.ant_seq,
-                self.header.ant_dwell_time_ms,
-                self.header.num_ant,
                 self.header.nfft,
                 self.header.window_len,
                 self.header.overlap_len,
@@ -199,10 +188,6 @@ class SpectrogramFile:
                 fs_khz,
                 bw_khz,
                 gain_db,
-                drone_search_bitmap,
-                ant_seq,
-                ant_dwell_time_ms,
-                num_ant,
                 nfft,
                 window_len,
                 overlap_len,
@@ -231,10 +216,6 @@ class SpectrogramFile:
                 fs_khz,
                 bw_khz,
                 gain_db,
-                drone_search_bitmap,
-                ant_seq,
-                ant_dwell_time_ms,
-                num_ant,
                 nfft,
                 window_len,
                 overlap_len,
@@ -297,10 +278,24 @@ class CaptureHeader:
     HEADER_V3_FORMAT = ">IIIIIIQQIQIIIQ"
     # NOTE: this length includes the 'total_len' field
     HEADER_V3_LEN_BYTES = 72
-    # NOTE: v4 header length may be variable (?)
+    # NOTE: v4 header length is fixed
     HEADER_V4_FORMAT = ">IIIIIIIIQQQQIIIQIIIQ"
+    HEADER_V4_LEN_BYTES = 104
+    # NOTE: v5 header has different length in search and track modes
+    # in the track mode, there is an extra structure called drone_search_map
+    # The drone_search_map can represent as a list of dict with attributes
+    # dr_type, chan_num, chan_list. Currently, the chan_num is fixed to 1, and
+    # chan_list has only one element. The max length of the drone search map
+    # is currently 10.
+    HEADER_V5_FORMAT_SEARCH = ">IIIIIIIIQQQQIIIQIIIII"
+    HEADER_V5_FORMAT_TRACK = ">IIIIIIIIQQQQIIIQIIIII" + "I" * 31
+    HEADER_V5_SEARCH_LEN_BYTES = 104
+    HEADER_V5_TRACK_LEN_BYTES = 228
+    CAPTURE_MAX_DRONE_SEARCH_MAP_LEN = 10
+
     PAYLOAD_BYTEORDER = "<"
     PAYLOAD_FORMAT = "h"
+
     # v1 and v2 have the same payload length
     PAYLOAD_V1_LEN_1 = 141792000  # 633 ms
     PAYLOAD_V1_LEN_2 = 20160000  # 90 ms
@@ -309,7 +304,7 @@ class CaptureHeader:
     PAYLOAD_V3_LEN_1 = 141792000  # 633 ms
     PAYLOAD_V3_LEN_2 = 103040000  # 460 ms
     PAYLOAD_V3_LEN_3 = 47264000  # 211 ms
-    # NOTE: v4 does not have a specified payload length
+    # NOTE: v4/v5 does not have a specified payload length
 
     # capture modes
     CAPTURE_MODE_SEARCH = 0
@@ -332,6 +327,11 @@ class CaptureHeader:
         capture_id=None,
         capture_mode=None,
         drone_search_bitmap=None,
+        ant_type=None,
+        angle=None,
+        drone_search_map_len=None,
+        drone_search_map=None,
+        header_len=None,
     ):
         self.header_version = version
 
@@ -345,15 +345,55 @@ class CaptureHeader:
         self.start_time_ticks = np.uint64(start_time_ticks)
         self.tps = np.uint64(tps)
 
-        if self.header_version in (2, 3, 4):
+        if self.header_version in (2, 3, 4, 5):
             self.num_ant = np.uint32(num_ant)
             self.ant_seq = np.uint32(ant_seq)
             self.ant_dwell_time_ms = np.uint32(ant_dwell_time_ms)
             self.capture_id = np.uint32(capture_id)
 
-        if self.header_version in (3, 4):
+        if self.header_version in (3, 4, 5):
             self.capture_mode = np.uint32(capture_mode)
-            self.drone_search_bitmap = np.uint64(drone_search_bitmap)
+            if self.header_version != 5:
+                self.drone_search_bitmap = np.uint64(drone_search_bitmap)
+            else:
+                self.ant_type = np.uint32(ant_type)
+                self.angle = np.uint(angle)
+                if self.capture_mode == 1:
+                    # track mode has extra structure - drone search map
+                    self.drone_search_map_len = np.uint32(drone_search_map_len)
+                    self.drone_search_map = drone_search_map
+
+        # Add the header len
+        if self.header_version == 1:
+            self.header_len = CaptureHeader.HEADER_V1_LEN_BYTES
+        elif self.header_version == 2:
+            self.header_len = CaptureHeader.HEADER_V2_LEN_BYTES
+        elif self.header_version == 3:
+            self.header_len = CaptureHeader.HEADER_V3_LEN_BYTES
+        elif self.header_version == 4:
+            if header_len is None:
+                self.header_len = CaptureHeader.HEADER_V4_LEN_BYTES
+            else:
+                self.header_len = header_len
+        else:
+            if self.capture_mode == CaptureHeader.CAPTURE_MODE_SEARCH:
+                if header_len is None:
+                    self.header_len = CaptureHeader.HEADER_V5_FORMAT_SEARCH
+                else:
+                    self.header_len = header_len
+            else:
+                if header_len is None:
+                    self.header_len = CaptureHeader.HEADER_V5_FORMAT_TRACK
+                else:
+                    self.header_len = header_len
+
+        # Add the capture dwell time in ms
+        int_short_in_byte = 2
+        num_int_in_payload = (
+            self.total_len - self.header_len + 4
+        ) // int_short_in_byte
+        num_iq_pair_in_payload = num_int_in_payload // 2
+        self.dwell_time_ms = num_iq_pair_in_payload / self.fs_khz
 
     def get(self):
         """
@@ -373,12 +413,17 @@ class CaptureHeader:
 class CaptureFile:
     """Class representation of capture data."""
 
-    def __init__(self, header=None, data=None, path=None):
+    def __init__(self, *args, header=None, data=None, path=None):
+        args = [str(a) for a in args]
         if header is not None and data is not None:
             self.header = header
             self._data = data
+            self.payload = None
         elif path is not None:
             self.load(path)
+        elif (len(args) == 1) and (".dat" in args[0]):
+            # if the provided input is the path of capture file
+            self.load(args[0])
         else:
             raise UsageException
 
@@ -443,6 +488,7 @@ class CaptureFile:
                 header_version = 3
                 header_len_bytes = CaptureHeader.HEADER_V3_LEN_BYTES
             else:
+                # for version number > 3
                 try:
                     header_len_bytes = struct.unpack(">I", f.read(4))[0]
                     header_version = struct.unpack(">I", f.read(4))[0]
@@ -484,6 +530,9 @@ class CaptureFile:
                     tps,
                 )
 
+                # Fill the missing attributes.
+                # TODO: this is from old code, not sure we should keep it in
+                #  the future
                 self.header.num_ant = 1
                 self.header.ant_seq = 0
                 self.header.ant_dwell_time_ms = 633
@@ -528,6 +577,9 @@ class CaptureFile:
                     capture_id,
                 )
 
+                # Fill the missing information.
+                # TODO: this is from old code, not sure we should keep it in
+                #  the future
                 self.header.capture_mode = CaptureHeader.CAPTURE_MODE_SEARCH
                 self.header.drone_search_bitmap = 0xFFFFFFFFFFFFFF
             elif header_version == 3:
@@ -580,7 +632,7 @@ class CaptureFile:
                 # parse header bytes
                 (
                     total_len,
-                    _,
+                    header_len,
                     _,
                     sensor_id,
                     fc_khz,
@@ -616,11 +668,96 @@ class CaptureFile:
                     ant_dwell_time_ms,
                     capture_id,
                     capture_mode,
-                    drone_search_bitmap,
+                    drone_search_bitmap=drone_search_bitmap,
+                    header_len=header_len,
+                )
+            elif header_version == 5:
+                header = f.read(header_len_bytes)
+                if len(header) != header_len_bytes:
+                    # raise exception if read bytes are less than expected
+                    raise HeaderReadException
+
+                if header_len_bytes > CaptureHeader.HEADER_V5_SEARCH_LEN_BYTES:
+                    # this is track mode
+                    f.seek(0)
+                    header = f.read(CaptureHeader.HEADER_V5_SEARCH_LEN_BYTES)
+
+                # parse header bytes for search mode
+                (
+                    total_len,
+                    header_len,
+                    _,
+                    sensor_id,
+                    fc_khz,
+                    fs_khz,
+                    bw_khz,
+                    gain_db,
+                    start_time_ticks,
+                    tps,
+                    fpga_pps,
+                    fpga_start_time,
+                    fpga_tps,
+                    pps_flag,
+                    num_ant,
+                    ant_seq,
+                    ant_dwell_time_ms,
+                    capture_id,
+                    capture_mode,
+                    ant_type,
+                    angle,
+                ) = struct.unpack(
+                    CaptureHeader.HEADER_V5_FORMAT_SEARCH, header
+                )
+                if capture_mode == CaptureHeader.CAPTURE_MODE_TRACK:
+                    # track mode has an extra drone search map structure
+                    drone_search_map = []
+                    drone_search_map_len = struct.unpack(">I", f.read(4))[0]
+
+                    # Loop to get the drone_search_map
+                    for _ in range(
+                        CaptureHeader.CAPTURE_MAX_DRONE_SEARCH_MAP_LEN
+                    ):
+                        dr_type = struct.unpack(">I", f.read(4))[0]
+                        # this is the current implementation
+                        # in engined, and it probably will change
+                        _ = struct.unpack(">I", f.read(4))[0]
+                        chan_num = 1
+                        chan_list = [struct.unpack(">I", f.read(4))[0]]
+                        search_map = {
+                            "dr_type": dr_type,
+                            "chan_num": chan_num,
+                            "chan_list": chan_list,
+                        }
+                        drone_search_map.append(search_map)
+                else:
+                    drone_search_map_len = None
+                    drone_search_map = None
+
+                # create header object
+                self.header = CaptureHeader(
+                    header_version,
+                    total_len,
+                    sensor_id,
+                    fc_khz,
+                    fs_khz,
+                    bw_khz,
+                    gain_db,
+                    start_time_ticks,
+                    tps,
+                    num_ant,
+                    ant_seq,
+                    ant_dwell_time_ms,
+                    capture_id,
+                    capture_mode,
+                    ant_type=ant_type,
+                    angle=angle,
+                    drone_search_map_len=drone_search_map_len,
+                    drone_search_map=drone_search_map,
+                    header_len=header_len,
                 )
             else:
                 raise DataReadException
-            # need to subtract 4 because the value of the total_len field does
+            # Need to subtract 4 because the value of the total_len field does
             # not include its own size. the last 4 bytes in the file are
             # ignored.
             data_len_bytes = self.header.total_len - (header_len_bytes - 4)
@@ -631,7 +768,7 @@ class CaptureFile:
             if len(data) != data_len_bytes:
                 raise DataReadException
 
-            # each sample is a 2-byte short
+            # Each sample is a 2-byte short
             data_len_shorts = data_len_bytes // 2
             try:
                 data_int16 = np.array(
@@ -645,7 +782,7 @@ class CaptureFile:
             except struct.error:
                 raise DataReadException
 
-            # save the raw binary data
+            # Save the raw binary data
             self._data = data_int16
             self.payload = data_int16[0::2] + 1j * data_int16[1::2]
 
@@ -666,98 +803,99 @@ class CaptureFile:
         )
         self.payload = data["rxdata"]
 
-    # def save(self, dest_path):
-    #     with open(dest_path, "wb") as f:
-    #         # pack bytes in header
-    #         header_bytes = struct.pack(
-    #             self.header.HEADER_V3_FORMAT,
-    #             self.header.total_len,
-    #             self.header.sensor_id,
-    #             self.header.fc_khz,
-    #             self.header.fs_khz,
-    #             self.header.bw_khz,
-    #             self.header.gain_db,
-    #             self.header.start_time_ticks,
-    #             self.header.tps,
-    #             self.header.num_ant,
-    #             self.header.ant_seq,
-    #             self.header.ant_dwell_time_ms,
-    #             self.header.capture_id,
-    #             self.header.capture_mode,
-    #             self.header.drone_search_bitmap,
-    #         )
-    #         f.write(header_bytes)
-    #         # pack bytes in payload
-    #         data_bytes = struct.pack(
-    #             CaptureHeader.PAYLOAD_BYTEORDER
-    #             + str(len(self._data))
-    #             + CaptureHeader.PAYLOAD_FORMAT,
-    #             *self._data,
-    #         )
-    #         f.write(data_bytes)
-
     def save(
         self,
         dest_path,
-        version="v4",
+        version=None,
         capture_len=None,
         center_freq=None,
         capture_mode=None,
+        capture_sid=None,
+        capture_bw=None,
     ):
-        sensor_id = self.header.sensor_id
+
+        # common attributes
+        if capture_sid is not None:
+            sensor_id = np.uint32(capture_sid)
+        else:
+            sensor_id = self.header.sensor_id
         if center_freq is not None:
-            fc_khz = center_freq
+            fc_khz = np.uint32(center_freq)
         else:
             fc_khz = self.header.fc_khz
+        if capture_mode is not None:
+            capture_mode = np.uint32(capture_mode)
+        else:
+            capture_mode = self.header.capture_mode
+        if capture_bw is not None:
+            if capture_bw < self.header.fs_khz:
+                bw_khz = np.uint32(capture_bw)
+            else:
+                # crop the bw_khz if it is larger than fs.
+                bw_khz = self.header.fs_khz
+        else:
+            bw_khz = self.header.bw_khz
+
+        capture_id = self.header.capture_id
         fs_khz = self.header.fs_khz
-        bw_khz = self.header.bw_khz
         gain_db = self.header.gain_db
         start_time_ticks = self.header.start_time_ticks
         tps = self.header.tps
+        # Prepare fpga related attributes for version > 3
         fpga_pps = 0
         fpga_start_time = 0
         fpga_tps = 0
         pps_flag = 0
+
+        # for various version
         if self.header.header_version == 1:
+            # adding dummy info for saving
             num_ant = np.uint32(4)
             ant_seq = np.uint64(int("3210", 16))
             ant_dwell_time_ms = np.uint32(50)
-            capture_id = np.uint32(123456)
-            capture_mode = np.uint32(0)
             drone_search_bitmap = np.uint64(int("FFFFFFFFFFFFFFFF", 16))
+            ant_type = np.uint32(0)
+            angle = np.uint32(0)
         elif self.header.header_version == 2:
             num_ant = self.header.num_ant
             ant_seq = self.header.ant_seq
             ant_dwell_time_ms = self.header.ant_dwell_time_ms
-            capture_id = self.header.capture_id
-            capture_mode = np.uint32(0)
+            # adding dummy info for saving
             drone_search_bitmap = np.uint64(int("FFFFFFFFFFFFFFFF", 16))
+            ant_type = np.uint32(0)
+            angle = np.uint32(0)
         else:
             num_ant = self.header.num_ant
             ant_seq = self.header.ant_seq
             ant_dwell_time_ms = self.header.ant_dwell_time_ms
-            capture_id = self.header.capture_id
-            if capture_mode is None:
-                capture_mode = self.header.capture_mode
+
+            if self.header.header_version == 5:
+                drone_search_bitmap = np.uint64(int("FFFFFFFFFFFFFFFF", 16))
+                ant_type = self.header.ant_type
+                angle = self.header.angle
             else:
-                capture_mode = np.uint32(capture_mode)
-            drone_search_bitmap = self.header.drone_search_bitmap
+                drone_search_bitmap = self.header.drone_search_bitmap
+                ant_type = np.uint32(0)
+                angle = np.uint32(0)
 
         # determine the data length
         if capture_len is not None:
-            data_length = self.header.fs_khz * capture_len * 2  # number of
-            # bytes
+            # number of short int
+            data_length = self.header.fs_khz * capture_len * 2
         else:
             data_length = len(self._data)
-        if version == "v4":
-            header_len = np.uint32(
-                np.sum(
-                    [
-                        4 if b == "I" else 8
-                        for b in CaptureHeader.HEADER_V4_FORMAT[1:]
-                    ]
-                )
-            )
+
+        # determine which version to save
+        version_to_save = None
+        if version is None:
+            if self.header.header_version < 4:
+                # the capture is saved using version 5
+                version_to_save = 5
+            else:
+                version_to_save = self.header.header_version
+
+        if version_to_save == 4:
+            header_len = CaptureHeader.HEADER_V4_LEN_BYTES
             total_length = header_len + 2 * data_length - 4  # total_length
             # is not included
             header_version = 4
@@ -785,8 +923,56 @@ class CaptureFile:
                 capture_mode,
                 drone_search_bitmap,
             ]
+        elif version_to_save == 5:
+            if capture_mode == CaptureHeader.CAPTURE_MODE_SEARCH:
+                header_len = CaptureHeader.HEADER_V5_SEARCH_LEN_BYTES
+                header_format = CaptureHeader.HEADER_V5_FORMAT_SEARCH
+            else:
+                header_len = CaptureHeader.HEADER_V5_TRACK_LEN_BYTES
+                header_format = CaptureHeader.HEADER_V5_FORMAT_TRACK
+
+            total_length = header_len + 2 * data_length - 4  # total_length
+            # is not included
+            header_version = 5
+
+            header = [
+                header_format,
+                total_length,
+                header_len,
+                header_version,
+                sensor_id,
+                fc_khz,
+                fs_khz,
+                bw_khz,
+                gain_db,
+                start_time_ticks,
+                tps,
+                fpga_pps,
+                fpga_start_time,
+                fpga_tps,
+                pps_flag,
+                num_ant,
+                ant_seq,
+                ant_dwell_time_ms,
+                capture_id,
+                capture_mode,
+                ant_type,
+                angle,
+            ]
+
+            if capture_mode == CaptureHeader.CAPTURE_MODE_TRACK:
+                if self.header.header_version == 5:
+                    # copy the information from raw v5 track
+                    header.append(self.header.drone_search_map_len)
+                    for search_map in self.header.drone_search_map:
+                        header.append(search_map["dr_type"])
+                        header.append(search_map["chan_num"])
+                        for chan in search_map["chan_list"]:
+                            header.append(chan)
+                else:
+                    header += 31 * [np.uint32(0)]
         else:
-            raise ValueError("Only support return v4 format capture")
+            raise ValueError("Only support return v4/v5 format capture")
 
         with open(dest_path, "wb") as f:
             # pack bytes in header
@@ -794,10 +980,25 @@ class CaptureFile:
             f.write(header_bytes)
 
             # pack bytes in payload
-            data_bytes = struct.pack(
-                CaptureHeader.PAYLOAD_BYTEORDER
-                + str(len(self._data[:data_length]))
-                + CaptureHeader.PAYLOAD_FORMAT,
-                *self._data[:data_length],
-            )
+            if data_length <= len(self._data):
+                data_bytes = struct.pack(
+                    CaptureHeader.PAYLOAD_BYTEORDER
+                    + str(len(self._data[:data_length]))
+                    + CaptureHeader.PAYLOAD_FORMAT,
+                    *self._data[:data_length],
+                )
+            else:
+                # pad one for longer than previous data length
+                data_bytes = struct.pack(
+                    CaptureHeader.PAYLOAD_BYTEORDER
+                    + str(data_length)
+                    + CaptureHeader.PAYLOAD_FORMAT,
+                    *np.concatenate(
+                        [
+                            self._data,
+                            np.ones(data_length - len(self._data)).astype(int),
+                        ]
+                    ),
+                )
+
             f.write(data_bytes)
